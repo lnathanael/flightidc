@@ -1,0 +1,228 @@
+---
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document: default
+---
+# Business Data Analytics and Prediction</br>
+**
+
+##  EDA in R 
+
+```{r}
+library(ggplot2)
+library(plotrix)
+
+```
+ 
+### Create a Test Set
+
+After a quick glance, we splited our data to train and test sets, and then put the test set aside and dont look on it until you have models to compare.
+
+####  Read the data 
+
+The business analytics concepts and code will be demonstrated on fligth delayed and canceled https://www.kaggle.com/giovamata/airlinedelaycauses
+
+We download the csv file from the link above.
+
+
+and then we read the cvs file in to a data frame, as below.
+
+
+```{r}
+df  = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/DelayedFlights.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+```
+
+####Split the data to train and test
+
+
+```{r}
+
+set.seed(111)
+bound <- floor((nrow(df)/4)*3)
+d <- df[sample(nrow(df)), ]
+df.train <- d[1:bound, ]
+df.test <- d[(bound+1):nrow(df), ]
+```
+
+
+### Explore the data set
+
+```{r}
+summary(df.train)
+
+```
+
+```{r}
+df.train$WeekDaybyName <- df.train$DayOfWeek
+df.train$MonthByName <- df.train$Month
+
+df.train$WeekDaybyName[df.train$WeekDaybyName == 1] = 'Monday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 2] = 'Tuesday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 3] = 'Wednesday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 4] = 'Thursday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 5] = 'Friday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 6] = 'Saturday'
+df.train$WeekDaybyName[df.train$WeekDaybyName == 7] = 'Sunday'
+
+df.train$MonthByName[df.train$MonthByName == 1] = 'January'
+df.train$MonthByName[df.train$MonthByName == 2] = 'February'
+df.train$MonthByName[df.train$MonthByName == 3] = 'March'
+df.train$MonthByName[df.train$MonthByName == 4] = 'April'
+df.train$MonthByName[df.train$MonthByName == 5] = 'May'
+df.train$MonthByName[df.train$MonthByName == 6] = 'June'
+df.train$MonthByName[df.train$MonthByName == 7] = 'July'
+df.train$MonthByName[df.train$MonthByName == 8] = 'August'
+df.train$MonthByName[df.train$MonthByName == 9] = 'September'
+df.train$MonthByName[df.train$MonthByName == 10] = 'October'
+df.train$MonthByName[df.train$MonthByName == 11] = 'November'
+df.train$MonthByName[df.train$MonthByName == 12] = 'December'
+```
+
+
+We have removed the information that is missing data
+
+```{r}
+
+(nrow(df.train ) - nrow(df.train [complete.cases(df.train ),]))/nrow(df.train )
+
+df.train.complete  <- df.train [complete.cases(df.train ),]
+sam.df.train.complete <- df.train.complete [sample(nrow(df.train.complete  ), 10000),]
+```
+
+```{r}
+
+summary(df.train.complete)
+```
+We see that when we remove the missing information we have no more information about the cancellations 
+```{r}
+
+CancelledSubset = subset(df.train, CancellationCode != 'N')
+df.train$CancellationCodebyname <- df.train$CancellationCode 
+df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'A'] = 'Carrier'
+df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'B'] = 'Weather'
+df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'C'] = 'NAS'
+df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'D'] = 'Security'
+
+
+
+ggplot(CancelledSubset,aes(MonthByName,fill=CancellationCodebyname)) + geom_bar()
+
+
+
+```
+
+#### Draw the histogram 
+
+
+
+```{r}
+maxfer= nrow(df.train.complete)
+par(mfrow = c(2,4) ); 
+hist(df.train.complete$ArrDelay,          main = "Arrval Delay ", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$DepDelay,          main = "Depart Delay ", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$CarrierDelay,      main = "Carrier Delay", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$WeatherDelay,      main = "Weather Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$NASDelay,          main = "NAS Delay.", border = "blue", col = "light blue", breaks = 100,  xlim=c(0,300))
+hist(df.train.complete$SecurityDelay,     main = "Security Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$LateAircraftDelay, main = "Late Aircraft Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+
+
+```
+
+
+```{r}
+h0 <- hist(df.train.complete$ArrDelay,breaks=300, plot = FALSE)
+h1 <- hist(df.train.complete$DepDelay,breaks=300, plot = FALSE) 
+
+plot(h0, main = "Histogram of Arrival and Departure Delay ", col = rgb(0,0,1, alpha = 0.5), xlim = c(0,300))  #plot the first hist
+plot(h1, col = rgb(1,0,0, alpha = 0.5), add = TRUE,xlim = c(0,300)) #add the second hist
+legend("right", c( "Arrival Delay","Departure Delay"), fill = c("blue","red"), cex=0.8) #Legend
+
+```
+
+```{r}
+library("limma")
+
+hdnas<-logical(nrow(df.train.complete))
+hdcar<-logical(nrow(df.train.complete))
+hdwat<-logical(nrow(df.train.complete))
+hdsec<-logical(nrow(df.train.complete))
+hdlat<-logical(nrow(df.train.complete))
+
+hdnas[which(df.train.complete$NASDelay>=15)]         =TRUE
+hdcar[which(df.train.complete$CarrierDelay>=15)]     =TRUE
+hdwat[which(df.train.complete$WeatherDelay>=15)]     =TRUE 
+hdsec[which(df.train.complete$SecurityDelay>=15)]    =TRUE
+hdlat[which(df.train.complete$LateAircraftDelay>=15)]=TRUE 
+
+c5 <- cbind(hdnas, hdcar , hdwat , hdsec ,hdlat)
+
+
+a <- vennCounts(c5)
+vennDiagram(a, include = "both",
+            names = c("NAS Delay", "Carrier Delay", "Weather Delay","Security Delay","Late Aircraft Delay"),
+            counts.col = "red")
+```
+```{r}
+num_of_NAS_only     = length(which(df.train.complete$NASDelay>=15 & df.train.complete$SecurityDelay==0 & df.train.complete$WeatherDelay==0 & df.train.complete$CarrierDelay ==0 & df.train.complete$LateAircraftDelay==0))
+num_of_securit      = length(which(df.train.complete$NASDelay==0 & df.train.complete$SecurityDelay>=15 & df.train.complete$WeatherDelay==0 & df.train.complete$CarrierDelay ==0 & df.train.complete$LateAircraftDelay==0)) 
+num_of_WeatherDelay = length(which(df.train.complete$NASDelay==0 & df.train.complete$SecurityDelay==0 & df.train.complete$WeatherDelay>=15 & df.train.complete$CarrierDelay ==0 & df.train.complete$LateAircraftDelay==0)) 
+num_of_CarrierDelay = length(which(df.train.complete$NASDelay==0 & df.train.complete$SecurityDelay==0 & df.train.complete$WeatherDelay==0 & df.train.complete$CarrierDelay >=15 & df.train.complete$LateAircraftDelay==0)) 
+num_of_LateAircraf  = length(which(df.train.complete$NASDelay==0 & df.train.complete$SecurityDelay==0 & df.train.complete$WeatherDelay==0 & df.train.complete$CarrierDelay ==0 & df.train.complete$LateAircraftDelay>=15)) 
+
+
+
+
+slices <- c(num_of_WeatherDelay,num_of_NAS_only,num_of_securit ,num_of_CarrierDelay,num_of_LateAircraf)
+lbls   <- c("Weather","NAS_only","Security","Carrier","Late Air craft")
+
+pie(slices, labels = lbls, main="Pie Chart delay")
+```
+```{r}
+non_char_list=which(lapply(df.train,typeof)!="character")
+cor_list<-c(3,6,7,8,9,13,14,15,16,17,20,21,22)
+pairs(sam.df.train.complete[as.numeric(cor_list)],col = "blue", cex = 0.5, upper.panel = NULL)
+```
+
+
+
+```{r}
+
+ggplot(df.train.complete, aes(x=CRSElapsedTime, y=ActualElapsedTime))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept=0, slope=1)
+```
+
+
+### Regretion 
+
+```{r}
+
+cor(df.train.complete$AirTime,df.train.complete$ActualElapsedTime)
+rg_airTime_lm=lm(formula=df.train.complete$ActualElapsed~df.train.complete$AirTime)
+summary(rg_airTime_lm)
+```
+
+```{r}
+ggplot(df.train.complete, aes(x=AirTime, y=ActualElapsedTime))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept= as.double(rg_airTime_lm$coefficients[1]), slope= as.double(rg_airTime_lm$coefficients[2]))
+```
+```{r}
+cor(df.train.complete$AirTime,df.train.complete$Distance)
+rg_airTime_lm=lm(formula=df.train.complete$AirTime~ df.train.complete$Distance)
+summary(rg_airTime_lm)
+```
+
+```{r}
+ggplot(df.train.complete, aes(x=Distance,y=AirTime))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept= as.double(rg_airTime_lm$coefficients[1]), slope= as.double(rg_airTime_lm$coefficients[2]))
+
+```
+
+```{r}
+
+var <- c("ActualElapsedTime","AirTime", "TaxiOut","TaxiIn")
+
+toReg <- sam.df.train.complete[,var]
+reg <- lm(ActualElapsedTime~., data= toReg)
+
+summary(reg)
+``````
+
