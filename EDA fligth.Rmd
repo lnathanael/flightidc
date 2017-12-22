@@ -99,12 +99,14 @@ We see that when we remove the missing information we have no more information a
 
 CancelledSubset = subset(df.train, CancellationCode != 'N')
 df.train$CancellationCodebyname <- df.train$CancellationCode 
+
 df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'A'] = 'Carrier'
 df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'B'] = 'Weather'
 df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'C'] = 'NAS'
 df.train$CancellationCodebyname[df.train$CancellationCodebyname == 'D'] = 'Security'
 
-
+```
+```{r}
 
 ggplot(CancelledSubset,aes(MonthByName,fill=CancellationCodebyname)) + geom_bar()
 
@@ -119,13 +121,13 @@ ggplot(CancelledSubset,aes(MonthByName,fill=CancellationCodebyname)) + geom_bar(
 ```{r}
 maxfer= nrow(df.train.complete)
 par(mfrow = c(2,4) ); 
-hist(df.train.complete$ArrDelay,          main = "Arrval Delay ", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
-hist(df.train.complete$DepDelay,          main = "Depart Delay ", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
-hist(df.train.complete$CarrierDelay,      main = "Carrier Delay", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
-hist(df.train.complete$WeatherDelay,      main = "Weather Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
-hist(df.train.complete$NASDelay,          main = "NAS Delay.", border = "blue", col = "light blue", breaks = 100,  xlim=c(0,300))
-hist(df.train.complete$SecurityDelay,     main = "Security Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
-hist(df.train.complete$LateAircraftDelay, main = "Late Aircraft Delay.", border = "blue", col = "light blue", breaks = 100, xlim=c(0,300))
+hist(df.train.complete$ArrDelay,          main = "Arrval Delay ", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$DepDelay,          main = "Depart Delay ", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$CarrierDelay,      main = "Carrier Delay", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$WeatherDelay,      main = "Weather Delay.", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$NASDelay,          main = "NAS Delay.", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$SecurityDelay,     main = "Security Delay.", border = "blue", col = "light blue", breaks = 100)
+hist(df.train.complete$LateAircraftDelay, main = "Late Aircraft Delay.", border = "blue", col = "light blue", breaks = 100)
 
 
 ```
@@ -224,5 +226,302 @@ toReg <- sam.df.train.complete[,var]
 reg <- lm(ActualElapsedTime~., data= toReg)
 
 summary(reg)
-``````
+```
+```{r}
+df.train.complete <- df.train.complete[(df.train.complete$AirTime<750),]
+df.train.complete <-df.train.complete[(df.train.complete$ArrDelay<400),]
+summary(df.train.complete)
 
+```
+```{r}
+cor(df.train.complete$AirTime,df.train.complete$ActualElapsedTime)
+rg_airTime_lm=lm(formula=df.train.complete$ActualElapsed~df.train.complete$AirTime)
+summary(rg_airTime_lm)
+```
+```{r}
+ggplot(df.train.complete, aes(x=AirTime, y=ActualElapsedTime))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept= as.double(rg_airTime_lm$coefficients[1]), slope= as.double(rg_airTime_lm$coefficients[2]))
+```
+
+### functions
+```{r}
+hist_all<-function(df,startIndex=1,endIndex=ncol(df))
+{
+  par(mfrow = c(2,4) )
+  for( i in startIndex: endIndex)
+  {
+    hist(df[,i] ,main=colnames(df)[i],xlab = colnames(df)[i] ,border = "blue", col = "light blue", breaks = 100)  
+  }
+}
+top_5_ori <-function (df)
+{
+  Origin.ord <- df[(df$Origin=="ORD"),]
+  Origin.atl <- df[(df$Origin=="ATL"),]
+  Origin.dfw <- df[(df$Origin=="DFW"),]
+  Origin.ewr <- df[(df$Origin=="EWR"),]
+  Origin.den <- df[(df$Origin=="DEN"),]
+  return(list(Origin.ord,Origin.atl,Origin.dfw,Origin.ewr,Origin.den))
+}
+top_5_dest <- function(df)
+{
+  
+  Dest.ord <- df[(df$Dest=="ORD"),]
+  Dest.atl <- df[(df$Dest=="ATL"),]
+  Dest.dfw <- df[(df$Dest=="DFW"),]
+  Dest.ewr <- df[(df$Dest=="EWR"),]
+  Dest.den <- df[(df$Dest=="DEN"),]
+   return(list(Dest.ord,Dest.atl,Dest.dfw,Dest.ewr,Dest.den))
+}
+my_transform<-function(df)
+{
+  df.transformed <- data.frame(ArrDelay=df$ArrDelay,DepDelay.log=log(df$DepDelay),DepDelay=df$DepDelay,Distance=df$Distance,DayOfWeek=df$DayOfWeek,Month=df$Month,DepTime=df$DepTime)
+  return(df.transformed)
+}
+my_ArrDelay_log_pow_lm<-function(df)
+{
+  temp_model<-lm(ArrDelay~DepDelay+DepDelay.log+DayOfWeek+Month+DepTime+I(DepDelay.log^2)+I(DepDelay^2),data=my_transform(df))
+  return(temp_model)
+}
+my_ArrDelay_log_pow3_lm<-function(df)
+{
+  temp_model<-lm(ArrDelay~DepDelay+DepDelay.log+DayOfWeek+Month+DepTime+I(DepDelay.log^2)+I(DepDelay^2)+I(DepDelay.log^3)+I(DepDelay^3),data=my_transform(df))
+  return(temp_model)
+}
+my_ArrDelay_log_lm<-function(df)
+{
+  temp_model<-lm(df$ArrDelay~df$DepDelay+df$DepDelay.log+df$DayOfWeek+df$Month+df$DepTime)
+  return(temp_model)
+}
+my_ArrDelay_lm<-function(df)
+{
+  temp_model<-lm(df$ArrDelay~df$DepDelay+df$DayOfWeek+df$Month+df$DepTime)
+  return(temp_model)
+}
+
+my_predict<- function(model,df.test) {
+  y_est <- predict(model, my_transform(df.test))
+  Res<- y_est - my_transform(df.test)$ArrDelay
+  L1 <- sum(abs(Res))/length(Res)
+  Res_sq<- Res^2
+  RSS <- sum(Res_sq)
+  MSE <- RSS/length(Res_sq)
+  RMSE <- sqrt(MSE)
+  return(data.frame(y_est=y_est,Res=Res,L1=L1,Res_sq=Res_sq,RSS=RSS,MSE=MSE,RMSE=RMSE))
+}
+
+hist_res<-function(temp)
+{
+  hist(as.data.frame(temp)$Res,border = "blue", col = "light blue", breaks = 100)
+}
+```
+##### clean data
+
+```{r}
+df.train.complete.ori <- top_5_ori(df.train.complete)
+df.train.complete.des <- top_5_dest(df.train.complete)
+```
+```{r}
+ 
+par(mfrow = c(2,5) )
+for(i in c(1:5))
+  {
+    hist(as.data.frame(df.train.complete.ori[i])$ArrDelay,border = "blue", col = "light blue", breaks = 100)
+    hist(as.data.frame(df.train.complete.des[i])$ArrDelay,border = "blue", col = "light blue", breaks = 100)
+  }
+```
+```{r}
+
+model1 <- lm(df.train.complete$ArrDelay~df.train.complete$DepDelay)
+summary(model1)
+
+```
+```{r}
+plot(df.train.complete$DepDelay,df.train.complete$ArrDelay, cex=0.2)
+abline(model1, col="blue")
+```
+```{r}
+plot(model1)
+```
+```{r}
+model2 <- lm(df.train.complete$ArrDelay~df.train.complete$DepDelay+log(df.train.complete$DepDelay))
+summary(model2)
+
+```
+
+```{r}
+plot(model2)
+```
+```{r}
+model3 <- lm(df.train.complete$ArrDelay~df.train.complete$DepDelay+log(df.train.complete$DepDelay))
+summary(model3)
+
+```
+
+
+
+```{r}
+library(leaps) #This library enables to see all subsets
+models <- regsubsets(ArrDelay~DepDelay+DepDelay.log+DayOfWeek+Month+DepTime+I(DepDelay.log^2)+I(DepDelay^2),data=my_transform(df.train.complete),nbest=10)
+
+
+
+plot(models, scale = "r2")
+```
+
+
+```{r}
+model_general_log=my_ArrDelay_log_lm(my_transform(df.train.complete))
+summary(model_general_log)
+plot(model_general_log)
+```
+```{r}
+model_des_atl_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.des[1])))
+model_des_den_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.des[2])))
+model_des_dfw_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.des[3])))
+model_des_ewr_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.des[4])))
+model_des_ord_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.des[5])))
+
+model_general=my_ArrDelay_lm(df.train.complete)
+model_des_atl=my_ArrDelay_lm(as.data.frame(df.train.complete.des[1]))
+model_des_den=my_ArrDelay_lm(as.data.frame(df.train.complete.des[2]))
+model_des_dfw=my_ArrDelay_lm(as.data.frame(df.train.complete.des[3]))
+model_des_ewr=my_ArrDelay_lm(as.data.frame(df.train.complete.des[4]))
+model_des_ord=my_ArrDelay_lm(as.data.frame(df.train.complete.des[5]))
+
+
+model_ori_atl_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.ori[1])))
+model_ori_den_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.ori[2])))
+model_ori_dfw_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.ori[3])))
+model_ori_ewr_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.ori[4])))
+model_ori_ord_log=my_ArrDelay_log_lm(my_transform(as.data.frame(df.train.complete.ori[5])))
+
+model_ori_atl=my_ArrDelay_lm(as.data.frame(df.train.complete.ori[1]))
+model_ori_den=my_ArrDelay_lm(as.data.frame(df.train.complete.ori[2]))
+model_ori_dfw=my_ArrDelay_lm(as.data.frame(df.train.complete.ori[3]))
+model_ori_ewr=my_ArrDelay_lm(as.data.frame(df.train.complete.ori[4]))
+model_ori_ord=my_ArrDelay_lm(as.data.frame(df.train.complete.ori[5]))
+
+
+```
+```{r}
+model_general_log_pow=my_ArrDelay_log_pow_lm(my_transform(df.train.complete))
+summary(model_general_log_pow)
+plot(model_general_log_pow)
+```
+```{r}
+model_general_log_pow3=my_ArrDelay_log_pow3_lm(my_transform(df.train.complete))
+summary(model_general_log_pow)
+plot(model_general_log_pow)
+```
+```{r}
+df.test.complete  <- df.test [complete.cases(df.test ),]
+df.test.complete.ori=top_5_ori(df.test.complete)
+df.test.complete.des= top_5_dest(df.test.complete)
+```
+
+
+```{r}
+pre_general <- my_predict(model_general, df.test.complete)
+pre_general_log <- my_predict(model_general_log, my_transform(df.test.complete))
+pre_general_log_pow<- my_predict(model_general_log_pow, my_transform(df.test.complete))
+
+pre_des_atl_log<-my_predict(model_des_atl_log,my_transform(as.data.frame(df.test.complete.des[1])))
+pre_des_den_log<-my_predict(model_des_den_log,my_transform(as.data.frame(df.test.complete.des[2])))
+pre_des_dfw_log<-my_predict(model_des_dfw_log,my_transform(as.data.frame(df.test.complete.des[3])))
+pre_des_ewr_log<-my_predict(model_des_ewr_log,my_transform(as.data.frame(df.test.complete.des[4])))
+pre_des_ord_log<-my_predict(model_des_ord_log,my_transform(as.data.frame(df.test.complete.des[5])))
+
+
+pre_des_atl<-my_predict(model_des_atl,as.data.frame(df.test.complete.des[1]))
+pre_des_den<-my_predict(model_des_den,as.data.frame(df.test.complete.des[2]))
+pre_des_dfw<-my_predict(model_des_dfw,as.data.frame(df.test.complete.des[3]))
+pre_des_ewr<-my_predict(model_des_ewr,as.data.frame(df.test.complete.des[4]))
+pre_des_ord<-my_predict(model_des_ord,as.data.frame(df.test.complete.des[5]))
+
+
+pre_ori_atl_log<-my_predict(model_ori_atl_log,my_transform(as.data.frame(df.test.complete.ori[1])))
+pre_ori_den_log<-my_predict(model_ori_den_log,my_transform(as.data.frame(df.test.complete.ori[2])))
+pre_ori_dfw_log<-my_predict(model_ori_dfw_log,my_transform(as.data.frame(df.test.complete.ori[3])))
+pre_ori_ewr_log<-my_predict(model_ori_ewr_log,my_transform(as.data.frame(df.test.complete.ori[4])))
+pre_ori_ord_log<-my_predict(model_ori_ord_log,my_transform(as.data.frame(df.test.complete.ori[5])))
+
+pre_ori_atl<-my_predict(model_ori_atl,as.data.frame(df.test.complete.ori[1]))
+pre_ori_den<-my_predict(model_ori_den,as.data.frame(df.test.complete.ori[2]))
+pre_ori_dfw<-my_predict(model_ori_dfw,as.data.frame(df.test.complete.ori[3]))
+pre_ori_ewr<-my_predict(model_ori_ewr,as.data.frame(df.test.complete.ori[4]))
+pre_ori_ord<-my_predict(model_ori_ord,as.data.frame(df.test.complete.ori[5]))
+```
+```{r}
+list_pre_des_log= list(pre_des_atl_log,pre_des_den_log,pre_des_dfw_log,pre_des_ewr_log,pre_des_ord_log)
+list_pre_des=list(pre_des_atl,pre_des_den,pre_des_dfw,pre_des_ewr,pre_des_ord)
+list_pre_ori_log=list(pre_ori_atl_log,pre_ori_den_log,pre_ori_dfw_log,pre_ori_ewr_log,pre_ori_ord_log)
+list_pre_ori=list(pre_ori_atl,pre_ori_den,pre_ori_dfw,pre_ori_ewr,pre_ori_ord)
+
+rm(pre_den_atl_log,pre_des_den_log,pre_des_dfw_log,pre_des_ewr_log,pre_des_ord_log)
+rm(pre_den_atl,pre_des_den,pre_des_dfw,pre_des_ewr,pre_des_ord)
+rm(pre_ori_atl_log,pre_ori_den_log,pre_ori_dfw_log,pre_ori_ewr_log,pre_ori_ord_log)
+rm(pre_ori_atl,pre_ori_den,pre_ori_dfw,pre_ori_ewr,pre_ori_ord)
+
+```
+
+
+```{r}
+hist(as.data.frame(list_pre_des_log[1])$Res,main="ATL DEST LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des_log[2])$Res,main="DEF DEST LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des_log[3])$Res,main="DFW DEST LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des_log[4])$Res,main="EWR DEST LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des_log[5])$Res,main="ORI DEST LOG",border = "blue", col = "light blue", breaks = 100)
+```
+```{r}
+hist(as.data.frame(list_pre_des[1])$Res,main="ATL DEST",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des[2])$Res,main="DEF DEST",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des[3])$Res,main="DFW DEST",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des[4])$Res,main="EWR DEST",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_des[5])$Res,main="ORI DEST",border = "blue", col = "light blue", breaks = 100)
+```
+
+```{r}
+hist(as.data.frame(list_pre_ori[1])$Res,main="ATL ORIGEN",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori[2])$Res,main="DEF ORIGEN",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori[3])$Res,main="DFW ORIGEN",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori[4])$Res,main="EWR ORIGEN",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori[5])$Res,main="ORI ORIGEN",border = "blue", col = "light blue", breaks = 100)
+```
+
+```{r}
+hist(as.data.frame(list_pre_ori_log[1])$Res,main="ATL ORIGEN LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori_log[2])$Res,main="DEF ORIGEN LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori_log[3])$Res,main="DFW ORIGEN LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori_log[4])$Res,main="EWR ORIGEN LOG",border = "blue", col = "light blue", breaks = 100)
+hist(as.data.frame(list_pre_ori_log[5])$Res,main="ORI ORIGEN LOG",border = "blue", col = "light blue", breaks = 100)
+```
+```{r}
+hist(pre_general$Res,main="GENERAL",border = "blue", col = "light blue", breaks = 100)
+hist(pre_general_log$Res,main="GENERAL LOG",border = "blue", col = "light blue", breaks = 100)
+hist(pre_general_log_pow$Res,main="GENERAL LOG",border = "blue", col = "light blue", breaks = 100)
+
+```
+
+```{r}
+mean(as.data.frame(list_pre_ori_log[1])$L1)
+mean(as.data.frame(list_pre_ori[1])$L1)
+mean(as.data.frame(list_pre_ori_log[2])$L1)
+mean(as.data.frame(list_pre_ori[2])$L1)
+mean(as.data.frame(list_pre_ori_log[3])$L1)
+mean(as.data.frame(list_pre_ori[3])$L1)
+mean(as.data.frame(list_pre_ori_log[4])$L1)
+mean(as.data.frame(list_pre_ori[4])$L1)
+mean(as.data.frame(list_pre_ori_log[5])$L1)
+mean(as.data.frame(list_pre_ori[5])$L1)
+```
+```{r}
+mean(as.data.frame(list_pre_ori_log[1])$RMSE)
+mean(as.data.frame(list_pre_ori[1])$RMSE)
+mean(as.data.frame(list_pre_ori_log[2])$RMSE)
+mean(as.data.frame(list_pre_ori[2])$RMSE)
+mean(as.data.frame(list_pre_ori_log[3])$RMSE)
+mean(as.data.frame(list_pre_ori[3])$RMSE)
+mean(as.data.frame(list_pre_ori_log[4])$RMSE)
+mean(as.data.frame(list_pre_ori[4])$RMSE)
+mean(as.data.frame(list_pre_ori_log[5])$RMSE)
+mean(as.data.frame(list_pre_ori[5])$RMSE)
+```
