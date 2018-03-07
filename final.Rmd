@@ -1,0 +1,397 @@
+---
+title: "fligth"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(ggplot2)
+library(leaps) #This library enables to see all subsetslibrary(plotrix)
+```
+
+### function
+
+To facilitate code writing we have added functions
+final_transform - The variables that eventually served us in regression
+transform - All the variables that we felt could be relevant and with which we examined the models
+tree_transform - All the variables we felt that could be relevant and with which we examined the tree model (variables without our manipulations)
+
+dep_transform - The data with which we examined the effect on Dep Delay
+
+
+```{r}
+
+final_transform<-function(df)
+{
+  df.transformed <- data.frame(ArrDelay=df$ArrDelay,DepDelay.log=log(df$DepDelay),DepDelay=df$DepDelay)
+  return(df.transformed)
+}
+transform<-function(df)
+{
+  df.transformed <- data.frame(ArrDelay=df$ArrDelay,DayOfWeek=df$DayOfWeek,DepDelay.log=log(df$DepDelay),DepDelay=df$DepDelay,Month=df$Month,Distance=df$Distance,DepDelay.log.2=I(log(df$DepDelay)^2),DepTime=df$DepTime,DepDelay.log.0.5=I(log(df$DepDelay)^0.5),FlightNum=df$FlightNum,Origin=as.numeric(as.factor(df$Origin)),Dest=as.numeric(as.factor(df$Dest )))
+  return(df.transformed)
+}
+tree_transform<-function(df)
+{
+  df.transformed <- data.frame(ArrDelay=df$ArrDelay,DayOfWeek=df$DayOfWeek,Month=df$Month,Distance=df$Distance,FlightNum=df$FlightNum,CRSDepTime=df$CRSDepTime,CRSArrTime=df$CRSArrTime,CRSElapsedTime=df$CRSElapsedTime,Origin=as.numeric(as.factor(df$Origin)),Dest=as.numeric(as.factor(df$Dest )))
+  return(df.transformed)
+}
+dep_transform<-function(df)
+{
+  df.transformed <- data.frame(DayOfWeek=df$DayOfWeek,Month=df$Month,DepDelay=df$DepDelay,Distance=df$Distance,FlightNum=df$FlightNum,CRSDepTime=df$CRSDepTime,CRSArrTime=df$CRSArrTime,DayofMonth=df$DayofMonth,df$CRSArrTime,Origin=as.numeric(as.factor(df$Origin)),Dest=as.numeric(as.factor(df$Dest )))
+  return(df.transformed)
+}
+nominal_predict <- function (df.test)
+{
+
+  Res<-  df.test$DepDelay - df.test$ArrDelay
+  L1 <- sum(abs(Res))/length(Res)
+  Res_sq<- Res^2
+  RSS <- sum(Res_sq)
+  MSE <- RSS/length(Res_sq)
+  RMSE <- sqrt(MSE)
+  return(data.frame(Res=Res,L1=L1,Res_sq=Res_sq,RSS=RSS,MSE=MSE,RMSE=RMSE))
+}
+my_predict<- function(model,df.test) {
+  y_est <- predict(model, df.test)
+  Res<- y_est - df.test$ArrDelay
+  L1 <- sum(abs(Res))/length(Res)
+  Res_sq<- Res^2
+  RSS <- sum(Res_sq)
+  MSE <- RSS/length(Res_sq)
+  RMSE <- sqrt(MSE)
+  return(data.frame(y_est=y_est,Res=Res,L1=L1,Res_sq=Res_sq,RSS=RSS,MSE=MSE,RMSE=RMSE))
+}
+
+dep_predict<- function(model,df.test) {
+  y_est <- predict(model, df.test)
+  Res<- y_est - df.test$DepDelay
+  L1 <- sum(abs(Res))/length(Res)
+  Res_sq<- Res^2
+  RSS <- sum(Res_sq)
+  MSE <- RSS/length(Res_sq)
+  RMSE <- sqrt(MSE)
+  return(data.frame(y_est=y_est,Res=Res,L1=L1,Res_sq=Res_sq,RSS=RSS,MSE=MSE,RMSE=RMSE))
+}
+```
+####  Read the data 
+
+The business analytics concepts and code will be demonstrated on fligth delayed and canceled https://www.kaggle.com/giovamata/airlinedelaycauses (2008)
+
+We download the csv file from the link above.
+and from https://www.transtats.bts.gov/DL_SelectFields.asp(2017)
+
+
+
+and then we read the cvs file in to a data frame, as below.
+
+
+```{r}
+setwd("C:\\Users\\User\\Documents\\MBA\\semester 1\\Bussiness Data Analysics\\plot")
+```
+```{r}
+df  = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/DelayedFlights.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+
+df <-df [which(df$DepDelay > (15)),]
+df <-df [which(df$DepDelay < (1500)),]
+summary(df)
+
+```
+### 2017 
+
+```{r}
+
+df.2017.1 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/1.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.2 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/2.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.3 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/3.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.4 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/4.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.5 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/5.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.6 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/6.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.7 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/7.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.8 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/8.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.9 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/9.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.10 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/10.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.11 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/11.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+df.2017.12 = read.csv(file="C:/Users/User/Documents/MBA/semester 1/Bussiness Data Analysics/data/flights/2017/12.csv",header=TRUE,as.is=TRUE,na.strings=c("NA",".",""))
+```
+```{r}
+df.2017 <- rbind(df.2017.1,df.2017.2,df.2017.3,df.2017.4,df.2017.5,df.2017.6,df.2017.7,df.2017.8,df.2017.9,df.2017.10,df.2017.11,df.2017.12)
+colnames(df.2017) <- c("Year", "Month","DepDelay","ArrDelay")
+```
+clean data
+```{r}
+df.2017 <-df.2017 [which(df.2017$DepDelay > (15)),]
+df.2017 <-df.2017 [which(df.2017$DepDelay < (1500)),]
+df.2017 <- df.2017[,(1:4)]
+df.2017  <- df.2017 [complete.cases(df.2017 ),]
+summary(df.2017)
+```
+
+####Split the data to train and test
+2008 train - 2017 test
+```{r}
+
+set.seed(111)
+bound <- floor((nrow(df)/4)*3)
+d <- df[sample(nrow(df)), ]
+df.train <- df
+df.test <- df.2017
+```
+2008 only 
+```{r}
+
+set.seed(111)
+bound <- floor((nrow(df)/4)*3)
+d <- df[sample(nrow(df)), ]
+df.train <- d[1:bound, ]
+df.test <- d[(bound+1):nrow(df), ]
+```
+2017 only
+```{r}
+
+set.seed(111)
+bound <- floor((nrow(df.2017)/4)*3)
+d <- df.2017[sample(nrow(df.2017)), ]
+df.train <- d[1:bound, ]
+df.test <- d[(bound+1):nrow(df.2017), ]
+```
+
+We have removed the information that is missing data
+
+```{r}
+
+df.train.complete  <- df.train [complete.cases(df.train ),]
+sam.df.train.complete <- df.train.complete [sample(nrow(df.train.complete  ), 10000),]
+
+```
+```{r}
+ggplot(df.train.complete, aes(y= ArrDelay,x=DepDelay))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept=0, slope=1)
+```
+```{r}
+  ggplot(final_transform(df.train.complete), aes(y= ArrDelay,x=DepDelay.log ))+geom_point(alpha=0.3, colour="orange")
+```
+
+
+```{r}
+ggplot(df.train.complete, aes(y= ArrDelay,x=Month))+geom_point(alpha=0.3, colour="blue")+geom_abline(colour="red", intercept=0, slope=1)
+```
+
+
+```{r}
+  ggplot(transform(df.train.complete), aes(y= ArrDelay,x=Origin))+geom_point(alpha=0.3, colour="blue")
+```
+```{r}
+  ggplot(transform(df.train.complete), aes(y= ArrDelay,x=Dest))+geom_point(alpha=0.3, colour="blue")
+```
+### Regretion 
+
+
+
+
+
+```{r}
+library(leaps)
+
+models <- regsubsets(ArrDelay~DepDelay+DepDelay.log+DayOfWeek+Month+DepTime+I(DayOfWeek^2)+I(DepTime^2)+FlightNum+DepDelay.log.0.5+DepDelay.log.2+Distance+Origin+Dest,data=transform(df.train.complete),nbest=10)
+summary(models)
+plot(models, scale = "r2")
+```
+```{r}
+fullmodel <-regsubsets(ArrDelay~.,data=tree_transform(df.train.complete))
+summary(fullmodel)
+plot(fullmodel, scale = "r2")
+```
+```{r}
+
+b<-regsubsets(DepDelay~.,data=dep_transform(df.train.complete))
+summary(b)
+plot(b, scale = "r2")
+```
+we ca see the r^2 and find it 
+```{r}
+ final_model<-lm(ArrDelay~DepDelay+DepDelay.log,data=final_transform(df.train.complete))
+summary(final_model)
+```
+
+```{r}
+test_model<-lm(ArrDelay~.,data=tree_transform(df.train.complete))
+summary(test_model)
+```
+```{r}
+modelde<-lm(DepDelay~.,data=dep_transform(df.train.complete))
+summary(modelde)
+```
+
+```{r}
+log.model.df <- data.frame(x = final_transform(df.train.complete)$DepDelay.log,
+                           y = predict(final_model, final_transform(df.train.complete)))
+```
+
+```{r}
+
+ggplot(final_transform(df.train.complete), aes(y= ArrDelay,x=DepDelay.log ))+geom_point(alpha=0.3, colour="blue")+geom_line(data = log.model.df, aes(x, y, color = "regression"),color = "red", size = 1, linetype = 1)
+
+
+```
+
+
+
+perdict
+
+```{r}
+
+df.test.complete  <- df.test [complete.cases(df.test),]
+df.test.complete  <- df.test.complete[which(df.test.complete$ArrDelay < (1500)),]
+
+```
+
+```{r}
+predict_model = my_predict(final_model,final_transform( df.test.complete))
+summary(predict_model)
+hist_linear <- hist(predict_model$Res,main="Regretion",border = "orange", col = " red", breaks = 50,xlim = c(-100,100))
+```
+
+```{r}
+predict_test_model = my_predict(test_model,tree_transform( df.test.complete))
+summary(predict_test_model)
+hist_linear <- hist(predict_test_model$Res,main="Regretion",border = "orange", col = " red", breaks = 50,xlim = c(-100,100))
+```
+```{r}
+predict_dep_model= dep_predict(modelde,dep_transform( df.test.complete))
+summary(predict_dep_model)
+hist_linear <- hist(predict_dep_model$Res,main="Regretion",border = "orange", col = " red",breaks = 50,xlim = c(-200,200))
+```
+```{r}
+
+
+```
+#tree 
+
+```{r}
+library("tree")
+ArrDelaytree <- tree(ArrDelay ~ . , data =transform(df.train.complete))
+depDelaytree <- tree(DepDelay ~ . , data =dep_transform(df.train.complete))
+```
+```{r}
+plot(ArrDelaytree)
+text(ArrDelaytree, pretty = 0, cex=0.8)
+```
+```{r}
+
+plot(depDelaytree)
+```
+```{r}
+depDelaytree
+```
+```{r}
+ArrDelaytree2 <- tree(ArrDelay ~ . , data =tree_transform(df.train.complete))
+plot(ArrDelaytree2)
+text(ArrDelaytree2, pretty = 0, cex=0.8)
+```
+```{r}
+ArrDelaytree2
+```
+
+```{r}
+predict_tree = my_predict(ArrDelaytree, transform(df.test.complete))
+predict_tree2 = my_predict(ArrDelaytree2, tree_transform(df.test.complete))
+```
+
+```{r}
+predict_dep_tree = dep_predict(depDelaytree, dep_transform(df.test.complete))
+```
+
+```{r}
+summary(predict_tree)
+hist_tree<-hist(predict_tree$Res,main="Tree",border = "orange", col = " red", breaks = 90,xlim = c(-100,100))
+
+```
+```{r}
+summary(predict_tree2)
+hist_tree2<-hist(predict_tree2$Res,main="Tree",border = "orange", col = " red", breaks = 90,xlim = c(-100,100))
+
+```
+
+```{r}
+summary(predict_dep_tree)
+hist_tree2<-hist(predict_dep_tree$Res,main="Tree",border = "orange", col = " red", breaks = 90,xlim = c(-100,100))
+
+```
+```{r}
+library("randomForest")
+set.seed(7) #RF includes random selection. Repeat same seed to repeat the RF
+ArrDelay.RF <- randomForest(ArrDelay ~ . , data = transform(sam.df.train.complete)) #Train with all predictors
+
+```
+```{r}
+plot(ArrDelay.RF)
+```
+```{r}
+varImpPlot(ArrDelay.RF)
+```
+```{r}
+predict_RF = my_predict(ArrDelay.RF,transform(df.test.complete))
+```
+
+```{r}
+summary(predict_RF)
+hist_rf<-hist(predict_RF$Res,main="model 1",border = "orange", col = " red", breaks = 50,xlim = c(-100,100))
+
+```
+```{r}
+set.seed(7) #RF includes random selection. Repeat same seed to repeat the RF
+ArrDelay.RF.2 <- randomForest(ArrDelay ~ . , data = tree_transform(sam.df.train.complete)) #Train with all predictors
+
+```
+```{r}
+plot(ArrDelay.RF.2)
+```
+```{r}
+varImpPlot(ArrDelay.RF.2)
+```
+```{r}
+predict_RF.2 = my_predict(ArrDelay.RF.2,tree_transform(df.test.complete))
+```
+
+```{r}
+summary(predict_RF.2)
+hist_rf<-hist(predict_RF.2$Res,main="model 1",border = "orange", col = " red", breaks = 50,xlim = c(-500,100))
+
+```
+
+```{r}
+set.seed(7) #RF includes random selection. Repeat same seed to repeat the RF
+DepDelay.RF <- randomForest(DepDelay ~ . , data =dep_transform(sam.df.train.complete)) #Train with all predictors
+
+```
+```{r}
+plot(DepDelay.RF)
+```
+```{r}
+varImpPlot(DepDelay.RF)
+```
+```{r}
+predict_DepDelay.RF = dep_predict(DepDelay.RF,dep_transform(df.test.complete))
+```
+
+```{r}
+summary(predict_DepDelay.RF)
+hist_rf<-hist(predict_DepDelay.RF$Res,main="model 1",border = "orange", col = " red", breaks = 50,xlim = c(-500,100))
+
+```
+
+
+
+```{r}
+predict1= nominal_predict(df.test.complete)
+```
+```{r}
+summary(predict1)
+mean(predict1$RMSE)
+pre_hist<-hist(predict1$Res,main="model 1",border = "orange", col = " red", breaks = 50,xlim = c(-100,100))
+```
